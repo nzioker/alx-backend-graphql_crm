@@ -73,26 +73,7 @@ class OrderInput(graphene.InputObjectType):
     product_ids = graphene.List(graphene.NonNull(graphene.ID), required=True)
     order_date = graphene.DateTime()
 
-# ==================== VALIDATION UTILITIES ====================
-
-def validate_phone_number(phone):
-    """Validate phone number format"""
-    if not phone:
-        return True
-    
-    # Allow formats: +1234567890 or 123-456-7890
-    pattern = r'^(\+\d{10,15}|\d{3}-\d{3}-\d{4})$'
-    if not re.match(pattern, phone):
-        raise ValidationError("Phone number must be in format: +1234567890 or 123-456-7890")
-    return True
-
-def validate_email_unique(email):
-    """Validate email uniqueness"""
-    if Customer.objects.filter(email=email).exists():
-        raise ValidationError(f"Email '{email}' already exists")
-    return True
-
-# ==================== MUTATIONS ====================
+# ==================== MUTATION CLASSES ====================
 
 class CreateCustomer(graphene.Mutation):
     class Arguments:
@@ -112,11 +93,15 @@ class CreateCustomer(graphene.Mutation):
             validate_email(input.email)
             
             # Validate email uniqueness
-            validate_email_unique(input.email)
+            if Customer.objects.filter(email=input.email).exists():
+                raise ValidationError(f"Email '{input.email}' already exists")
             
             # Validate phone format if provided
             if input.phone:
-                validate_phone_number(input.phone)
+                # Allow formats: +1234567890 or 123-456-7890
+                pattern = r'^(\+\d{10,15}|\d{3}-\d{3}-\d{4})$'
+                if not re.match(pattern, input.phone):
+                    raise ValidationError("Phone number must be in format: +1234567890 or 123-456-7890")
             
             # Create customer
             customer = Customer(
@@ -177,10 +162,9 @@ class BulkCreateCustomers(graphene.Mutation):
                     
                     # Validate phone format if provided
                     if customer_data.phone:
-                        try:
-                            validate_phone_number(customer_data.phone)
-                        except ValidationError as e:
-                            errors.append(f"Customer {idx+1}: {e.message}")
+                        pattern = r'^(\+\d{10,15}|\d{3}-\d{3}-\d{4})$'
+                        if not re.match(pattern, customer_data.phone):
+                            errors.append(f"Customer {idx+1}: Phone number must be in format: +1234567890 or 123-456-7890")
                             continue
                     
                     # Create customer
@@ -254,17 +238,19 @@ class CreateOrder(graphene.Mutation):
             
             # Get products and validate existence
             products = []
-            total_amount = Decimal('0.00')
-            
             for product_id in input.product_ids:
                 try:
                     product = Product.objects.get(id=product_id)
                     if product.stock <= 0:
                         raise ValidationError(f"Product '{product.name}' is out of stock")
                     products.append(product)
-                    total_amount += product.price
                 except Product.DoesNotExist:
                     raise ValidationError(f"Product with ID {product_id} not found")
+            
+            # Calculate total amount
+            total_amount = Decimal('0.00')
+            for product in products:
+                total_amount += product.price
             
             # Create order and order items in transaction
             with transaction.atomic():
