@@ -1,9 +1,7 @@
-import graphene  # Import graphene
+import graphene
+from crm.schema import Query as CRMQuery  # Import from crm schema
 
-class Query(graphene.ObjectType):  # Class Query exists and inherits graphene.ObjectType
-    hello = graphene.String()
-    
-    def resolve_hello(self, info):
-        return "Hello, GraphQL!"
+class Query(CRMQuery, graphene.ObjectType):
+    pass
 
-schema = graphene.Schema(query=Query)  # Schema with Query class
+schema = graphene.Schema(query=Query)
