@@ -24,7 +24,8 @@ INSTALLED_APPS = [
     
     # Third-party apps
     'graphene_django',  
-    'django_filters',   
+    'django_filters',
+    'django_crontab',
     
     # Local apps
     'crm',  
@@ -59,6 +60,10 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'alx_backend_graphql_crm.wsgi.application'
+
+CRONJOBS = [
+    ('*/5 * * * *', 'crm.cron.log_crm_heartbeat'),
+]
 
 # Database
 DATABASES = {
