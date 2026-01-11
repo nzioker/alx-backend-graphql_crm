@@ -10,6 +10,7 @@ from django.core.validators import validate_email
 from django.db.models import Q
 from .models import Customer, Product, Order, OrderItem
 from .filters import CustomerFilter, ProductFilter, OrderFilter
+from crm.models import Product
 
 # ==================== TYPES WITH FILTERING ====================
 
