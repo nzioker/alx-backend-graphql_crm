@@ -43,3 +43,64 @@ def log_crm_heartbeat():
             f.write(f"{timestamp} GraphQL check failed: {str(e)}\n")
         
         print(f"Heartbeat logged at {timestamp} - GraphQL check failed")
+
+def update_low_stock():
+    """
+    Update low-stock products every 12 hours
+    """
+    from crm.models import Product
+    
+    timestamp = timezone.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_file = "/tmp/low_stock_updates_log.txt"
+    
+    try:
+        # Execute GraphQL mutation
+        endpoint = "http://localhost:8000/graphql"
+        transport = RequestsHTTPTransport(url=endpoint)
+        client = Client(transport=transport, fetch_schema_from_transport=True)
+        
+        mutation = gql("""
+        mutation UpdateLowStock($incrementBy: Int) {
+            updateLowStockProducts(incrementBy: $incrementBy) {
+                updatedProducts {
+                    id
+                    name
+                    stock
+                    price
+                }
+                message
+            }
+        }
+        """)
+        
+        result = client.execute(mutation, variable_values={
+            "incrementBy": 10
+        })
+        
+        mutation_result = result.get('updateLowStockProducts', {})
+        updated_products = mutation_result.get('updatedProducts', [])
+        message = mutation_result.get('message', '')
+        
+        # Log results
+        with open(log_file, "a") as f:
+            f.write(f"\n{'='*50}\n")
+            f.write(f"Low Stock Update - {timestamp}\n")
+            f.write(f"{'='*50}\n")
+            f.write(f"Status: {message}\n")
+            
+            if updated_products:
+                f.write("Updated Products:\n")
+                for product in updated_products:
+                    f.write(f"  - {product['name']}: New Stock = {product['stock']}, Price = ${product['price']}\n")
+            else:
+                f.write("No low-stock products found.\n")
+        
+        print(f"Low stock update completed at {timestamp}: {message}")
+        
+    except Exception as e:
+        with open(log_file, "a") as f:
+            f.write(f"\n{'='*50}\n")
+            f.write(f"ERROR - Low Stock Update - {timestamp}\n")
+            f.write(f"Error: {str(e)}\n")
+        
+        print(f"Error updating low stock: {str(e)}")
