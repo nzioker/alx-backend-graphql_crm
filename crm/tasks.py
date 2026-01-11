@@ -7,6 +7,8 @@ from celery import shared_task
 from django.utils import timezone
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
+import requests
+from datetime import datetime
 
 # Setup Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'alx_backend_graphql_crm.settings')
