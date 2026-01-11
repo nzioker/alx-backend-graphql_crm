@@ -427,3 +427,38 @@ class Mutation(graphene.ObjectType):
     bulk_create_customers = BulkCreateCustomers.Field()
     create_product = CreateProduct.Field()
     create_order = CreateOrder.Field()
+    update_low_stock_products = UpdateLowStockProducts.Field()
+
+class UpdateLowStockProducts(graphene.Mutation):
+    """
+    Mutation to update low-stock products (stock < 10)
+    Increments stock by 10 for each low-stock product
+    """
+    class Arguments:
+        increment_by = graphene.Int(required=False, default_value=10)
+    
+    updated_products = graphene.List(ProductType)
+    message = graphene.String()
+    
+    @classmethod
+    def mutate(cls, root, info, increment_by=10):
+        try:
+            # Find products with stock less than 10
+            low_stock_products = Product.objects.filter(stock__lt=10)
+            
+            # Update stock for each product
+            updated_products = []
+            for product in low_stock_products:
+                product.stock += increment_by
+                product.save()
+                updated_products.append(product)
+            
+            count = len(updated_products)
+            
+            return UpdateLowStockProducts(
+                updated_products=updated_products,
+                message=f"Updated {count} low-stock products. Stock increased by {increment_by} each."
+            )
+            
+        except Exception as e:
+            raise Exception(f"Error updating low-stock products: {str(e)}")
